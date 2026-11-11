@@ -1,0 +1,551 @@
+import type { KaliTool, ToolCategory } from './types';
+
+export const categoryLabels: Record<ToolCategory, string> = {
+  reconnaissance: 'Reconnaissance',
+  scanning: 'Scanning & Enumeration',
+  exploitation: 'Exploitation',
+  password: 'Password Attacks',
+  wireless: 'Wireless Attacks',
+  sniffing: 'Sniffing & Spoofing',
+  post: 'Post Exploitation',
+  forensics: 'Forensics',
+  reporting: 'Reporting',
+};
+
+export const categoryIcons: Record<ToolCategory, string> = {
+  reconnaissance: 'Satellite',
+  scanning: 'Radar',
+  exploitation: 'Sword',
+  password: 'KeyRound',
+  wireless: 'Wifi',
+  sniffing: 'Activity',
+  post: 'Terminal',
+  forensics: 'Search',
+  reporting: 'FileText',
+};
+
+export const kaliTools: KaliTool[] = [
+  // ─── Reconnaissance ───────────────────────────────────────────────
+  {
+    id: 'nmap-recon',
+    name: 'Nmap',
+    category: 'reconnaissance',
+    description: 'Network mapper for host discovery and port scanning',
+    icon: 'Radar',
+    command: 'nmap',
+    estimatedRuntime: 8,
+    params: [
+      { id: 'target', label: 'Target (IP / CIDR / host)', type: 'text', placeholder: '192.168.1.0/24', required: true, hint: 'IP, range or hostname' },
+      { id: 'scanType', label: 'Scan Type', type: 'select', default: '-sV', options: ['-sV (Service Detection)', '-sS (SYN Stealth)', '-sU (UDP)', '-A (Aggressive)', '-sn (Host Discovery)'] },
+      { id: 'portRange', label: 'Port Range', type: 'text', placeholder: '1-1000', default: '', hint: 'e.g. 80,443 or 1-65535' },
+      { id: 'osDetect', label: 'OS Detection (-O)', type: 'boolean', default: false },
+    ],
+    followUps: [
+      { id: 'fu-nmap-scan', label: 'Detailed scan on open ports', toolId: 'nmap-recon', description: 'Run a deeper scan against discovered ports' },
+      { id: 'fu-nmap-vuln', label: 'Run Nmap Vuln scripts', toolId: 'nmap-vuln', description: 'Check for known vulnerabilities on the target' },
+    ],
+  },
+  {
+    id: 'nmap-vuln',
+    name: 'Nmap Vuln Scripts',
+    category: 'reconnaissance',
+    description: 'Run NSE vulnerability scripts against a target',
+    icon: 'ShieldAlert',
+    command: 'nmap',
+    estimatedRuntime: 12,
+    params: [
+      { id: 'target', label: 'Target', type: 'text', placeholder: '192.168.1.1', required: true },
+      { id: 'script', label: 'Script Category', type: 'select', default: 'vuln', options: ['vuln', 'default', 'safe', 'intrusive', 'all'] },
+    ],
+    followUps: [
+      { id: 'fu-vuln-searchsploit', label: 'Search exploits for found services', toolId: 'searchsploit', description: 'Query the Exploit-DB database' },
+    ],
+  },
+  {
+    id: 'searchsploit',
+    name: 'SearchSploit',
+    category: 'reconnaissance',
+    description: 'Search Exploit-DB for known exploits',
+    icon: 'Search',
+    command: 'searchsploit',
+    estimatedRuntime: 3,
+    params: [
+      { id: 'query', label: 'Search Query', type: 'text', placeholder: 'apache 2.4', required: true },
+    ],
+  },
+  {
+    id: 'theharvester',
+    name: 'theHarvester',
+    category: 'reconnaissance',
+    description: 'Gather emails, subdomains and hosts from public sources',
+    icon: 'Mail',
+    command: 'theHarvester',
+    estimatedRuntime: 15,
+    params: [
+      { id: 'domain', label: 'Domain', type: 'text', placeholder: 'example.com', required: true },
+      { id: 'source', label: 'Data Source', type: 'select', default: 'all', options: ['all', 'google', 'bing', 'linkedin', 'twitter'] },
+    ],
+  },
+  {
+    id: 'recon-ng',
+    name: 'Recon-ng',
+    category: 'reconnaissance',
+    description: 'Full-featured web reconnaissance framework',
+    icon: 'Globe',
+    command: 'recon-ng',
+    estimatedRuntime: 20,
+    params: [
+      { id: 'domain', label: 'Target Domain', type: 'text', placeholder: 'example.com', required: true },
+      { id: 'module', label: 'Module', type: 'select', default: 'recon/domains-hosts/google_site_web', options: ['recon/domains-hosts/google_site_web', 'recon/hosts/gather/http/web', 'recon/domains-names/brute_suffix'] },
+    ],
+  },
+  {
+    id: 'dnsenum',
+    name: 'DNSenum',
+    category: 'reconnaissance',
+    description: 'Enumerate DNS information and subdomains',
+    icon: 'Network',
+    command: 'dnsenum',
+    estimatedRuntime: 10,
+    params: [
+      { id: 'domain', label: 'Domain', type: 'text', placeholder: 'example.com', required: true },
+    ],
+  },
+  {
+    id: 'masscan',
+    name: 'Masscan',
+    category: 'reconnaissance',
+    description: 'Fast port scanner for the entire internet',
+    icon: 'Zap',
+    command: 'masscan',
+    estimatedRuntime: 5,
+    params: [
+      { id: 'target', label: 'Target (CIDR)', type: 'text', placeholder: '10.0.0.0/8', required: true },
+      { id: 'ports', label: 'Ports', type: 'text', placeholder: '1-65535', default: '1-65535' },
+      { id: 'rate', label: 'Rate (packets/sec)', type: 'number', default: 1000 },
+    ],
+  },
+
+  // ─── Scanning & Enumeration ───────────────────────────────────────
+  {
+    id: 'nikto',
+    name: 'Nikto',
+    category: 'scanning',
+    description: 'Web server scanner for dangerous files and outdated software',
+    icon: 'ShieldX',
+    command: 'nikto',
+    estimatedRuntime: 15,
+    params: [
+      { id: 'target', label: 'Target URL', type: 'text', placeholder: 'http://192.168.1.1', required: true },
+      { id: 'port', label: 'Port', type: 'number', default: 80 },
+    ],
+    followUps: [
+      { id: 'fu-nikto-sqlmap', label: 'SQL injection test on found forms', toolId: 'sqlmap', description: 'Test discovered endpoints for SQLi' },
+    ],
+  },
+  {
+    id: 'dirb',
+    name: 'Dirb / Gobuster',
+    category: 'scanning',
+    description: 'Directory/file brute-forcing on web servers',
+    icon: 'FolderSearch',
+    command: 'gobuster',
+    estimatedRuntime: 10,
+    params: [
+      { id: 'url', label: 'Target URL', type: 'text', placeholder: 'http://192.168.1.1', required: true },
+      { id: 'wordlist', label: 'Wordlist', type: 'select', default: '/usr/share/wordlists/dirb/common.txt', options: ['/usr/share/wordlists/dirb/common.txt', '/usr/share/wordlists/dirb/big.txt', '/usr/share/wordlists/seclists/Discovery/Web-Content/raft-medium-files.txt'] },
+      { id: 'extensions', label: 'Extensions', type: 'text', placeholder: 'php,html,txt', default: 'php,html,txt' },
+    ],
+  },
+  {
+    id: 'enum4linux',
+    name: 'Enum4linux',
+    category: 'scanning',
+    description: 'Enumerate information from Windows/Samba hosts',
+    icon: 'Server',
+    command: 'enum4linux',
+    estimatedRuntime: 12,
+    params: [
+      { id: 'target', label: 'Target IP', type: 'text', placeholder: '192.168.1.1', required: true },
+    ],
+  },
+  {
+    id: 'smbclient',
+    name: 'SMBclient',
+    category: 'scanning',
+    description: 'List and access SMB shares on a target',
+    icon: 'HardDrive',
+    command: 'smbclient',
+    estimatedRuntime: 5,
+    params: [
+      { id: 'target', label: 'Target', type: 'text', placeholder: '//192.168.1.1/', required: true },
+      { id: 'action', label: 'Action', type: 'select', default: '-L', options: ['-L (List shares)', '--browse (Browse share)'] },
+    ],
+  },
+
+  // ─── Exploitation ────────────────────────────────────────────────
+  {
+    id: 'metasploit',
+    name: 'Metasploit',
+    category: 'exploitation',
+    description: 'Exploitation framework for vulnerabilities',
+    icon: 'Sword',
+    command: 'msfconsole',
+    estimatedRuntime: 25,
+    params: [
+      { id: 'module', label: 'Module', type: 'text', placeholder: 'exploit/multi/handler', required: true, hint: 'e.g. exploit/windows/smb/ms17_010_eternalblue' },
+      { id: 'target', label: 'RHOST', type: 'text', placeholder: '192.168.1.1', required: true },
+      { id: 'lhost', label: 'LHOST', type: 'text', placeholder: '192.168.1.100' },
+      { id: 'lport', label: 'LPORT', type: 'number', default: 4444 },
+    ],
+    followUps: [
+      { id: 'fu-msf-post', label: 'Post-exploitation modules', toolId: 'mimikatz', description: 'Run post-exploitation on the session' },
+    ],
+  },
+  {
+    id: 'sqlmap',
+    name: 'SQLmap',
+    category: 'exploitation',
+    description: 'Automated SQL injection and database takeover',
+    icon: 'Database',
+    command: 'sqlmap',
+    estimatedRuntime: 18,
+    params: [
+      { id: 'url', label: 'Target URL', type: 'text', placeholder: 'http://192.168.1.1/page?id=1', required: true },
+      { id: 'action', label: 'Action', type: 'select', default: '--dbs', options: ['--dbs (List databases)', '--tables (List tables)', '--dump (Dump data)', '--os-shell (OS Shell)'] },
+      { id: 'level', label: 'Level', type: 'number', default: 1, hint: '1-5' },
+      { id: 'risk', label: 'Risk', type: 'number', default: 1, hint: '1-3' },
+    ],
+  },
+  {
+    id: 'hydra',
+    name: 'Hydra',
+    category: 'exploitation',
+    description: 'Fast network logon cracker for multiple protocols',
+    icon: 'Lock',
+    command: 'hydra',
+    estimatedRuntime: 20,
+    params: [
+      { id: 'target', label: 'Target', type: 'text', placeholder: '192.168.1.1', required: true },
+      { id: 'service', label: 'Service', type: 'select', default: 'ssh', options: ['ssh', 'ftp', 'http-post-form', 'rdp', 'smb', 'telnet', 'vnc'] },
+      { id: 'user', label: 'Username', type: 'text', placeholder: 'admin' },
+      { id: 'userList', label: 'User List (file)', type: 'text', placeholder: '/usr/share/wordlists/metasploit/unix_users.txt' },
+      { id: 'passList', label: 'Password List', type: 'select', default: '/usr/share/wordlists/rockyou.txt', options: ['/usr/share/wordlists/rockyou.txt', '/usr/share/wordlists/metasploit/unix_passwords.txt', '/usr/share/wordlists/fasttrack.txt'] },
+    ],
+    followUps: [
+      { id: 'fu-hydra-ssh', label: 'Connect via SSH', toolId: 'ssh-connect', description: 'Use found credentials to connect' },
+    ],
+  },
+
+  // ─── Password Attacks ────────────────────────────────────────────
+  {
+    id: 'john',
+    name: 'John the Ripper',
+    category: 'password',
+    description: 'Password hash cracker supporting many algorithms',
+    icon: 'KeyRound',
+    command: 'john',
+    estimatedRuntime: 15,
+    params: [
+      { id: 'hashfile', label: 'Hash File', type: 'text', placeholder: '/path/to/hashes.txt', required: true },
+      { id: 'wordlist', label: 'Wordlist', type: 'select', default: '/usr/share/wordlists/rockyou.txt', options: ['/usr/share/wordlists/rockyou.txt', '/usr/share/wordlists/fasttrack.txt', ''] },
+      { id: 'format', label: 'Format', type: 'select', default: 'auto', options: ['auto', 'md5', 'sha256', 'nt', 'raw-sha1', 'descrypt'] },
+    ],
+  },
+  {
+    id: 'hashcat',
+    name: 'Hashcat',
+    category: 'password',
+    description: 'GPU-accelerated password recovery utility',
+    icon: 'Cpu',
+    command: 'hashcat',
+    estimatedRuntime: 20,
+    params: [
+      { id: 'hashfile', label: 'Hash File', type: 'text', placeholder: '/path/to/hashes.txt', required: true },
+      { id: 'mode', label: 'Hash Mode', type: 'select', default: '0 (MD5)', options: ['0 (MD5)', '100 (SHA1)', '1400 (SHA256)', '1000 (NTLM)', '1800 (sha512crypt)'] },
+      { id: 'wordlist', label: 'Wordlist', type: 'select', default: '/usr/share/wordlists/rockyou.txt', options: ['/usr/share/wordlists/rockyou.txt', '/usr/share/wordlists/fasttrack.txt'] },
+      { id: 'attackMode', label: 'Attack Mode', type: 'select', default: '0 (Straight)', options: ['0 (Straight)', '3 (Brute-force)', '6 (Hybrid Word+Mask)', '7 (Hybrid Mask+Word)'] },
+    ],
+  },
+  {
+    id: 'wordlists',
+    name: 'Wordlists Manager',
+    category: 'password',
+    description: 'Generate and prepare custom wordlists',
+    icon: 'List',
+    command: 'crunch',
+    estimatedRuntime: 5,
+    params: [
+      { id: 'minLen', label: 'Min Length', type: 'number', default: 6 },
+      { id: 'maxLen', label: 'Max Length', type: 'number', default: 8 },
+      { id: 'charset', label: 'Charset', type: 'text', placeholder: 'abcdefghijklmnopqrstuvwxyz', default: 'abcdefghijklmnopqrstuvwxyz0123456789' },
+    ],
+  },
+
+  // ─── Wireless Attacks ────────────────────────────────────────────
+  {
+    id: 'airmon-ng',
+    name: 'Airmon-ng',
+    category: 'wireless',
+    description: 'Enable monitor mode on wireless interfaces',
+    icon: 'Wifi',
+    command: 'airmon-ng',
+    estimatedRuntime: 4,
+    requiresMonitor: false,
+    params: [
+      { id: 'interface', label: 'Interface', type: 'text', placeholder: 'wlan0', required: true },
+      { id: 'action', label: 'Action', type: 'select', default: 'start', options: ['start (Enable monitor mode)', 'stop (Disable monitor mode)', 'check (Kill interfering processes)'] },
+    ],
+  },
+  {
+    id: 'airodump-ng',
+    name: 'Airodump-ng',
+    category: 'wireless',
+    description: 'Capture WiFi packets and discover networks',
+    icon: 'Radio',
+    command: 'airodump-ng',
+    estimatedRuntime: 15,
+    requiresMonitor: true,
+    params: [
+      { id: 'interface', label: 'Monitor Interface', type: 'text', placeholder: 'wlan0mon', required: true },
+      { id: 'band', label: 'Band', type: 'select', default: 'all', options: ['all (2.4 + 5 GHz)', 'bg (2.4 GHz)', 'a (5 GHz)'] },
+      { id: 'channel', label: 'Channel', type: 'text', placeholder: 'e.g. 6 or 1,6,11', default: '' },
+      { id: 'writeFile', label: 'Write to file', type: 'boolean', default: true },
+    ],
+    followUps: [
+      { id: 'fu-airodump-deauth', label: 'Deauth attack on AP', toolId: 'aireplay-ng', description: 'Send deauth packets to capture handshake' },
+      { id: 'fu-airodump-crack', label: 'Crack captured handshake', toolId: 'aircrack-ng', description: 'Brute-force the WPA handshake' },
+    ],
+  },
+  {
+    id: 'aireplay-ng',
+    name: 'Aireplay-ng',
+    category: 'wireless',
+    description: 'Inject packets (deauth, fake auth, etc.)',
+    icon: 'Send',
+    command: 'aireplay-ng',
+    estimatedRuntime: 8,
+    requiresMonitor: true,
+    params: [
+      { id: 'interface', label: 'Monitor Interface', type: 'text', placeholder: 'wlan0mon', required: true },
+      { id: 'bssid', label: 'BSSID (AP MAC)', type: 'text', placeholder: '00:11:22:33:44:55', required: true },
+      { id: 'channel', label: 'Channel', type: 'number', placeholder: 6, required: true },
+      { id: 'count', label: 'Deauth Count', type: 'number', default: 5 },
+    ],
+    followUps: [
+      { id: 'fu-aireplay-crack', label: 'Crack the handshake', toolId: 'aircrack-ng', description: 'Crack the WPA handshake' },
+    ],
+  },
+  {
+    id: 'aircrack-ng',
+    name: 'Aircrack-ng',
+    category: 'wireless',
+    description: 'WEP/WPA/WPA2 key cracker',
+    icon: 'Unlock',
+    command: 'aircrack-ng',
+    estimatedRuntime: 10,
+    params: [
+      { id: 'captureFile', label: 'Capture File', type: 'text', placeholder: '/root/captures/cap-01.cap', required: true },
+      { id: 'wordlist', label: 'Wordlist', type: 'select', default: '/usr/share/wordlists/rockyou.txt', options: ['/usr/share/wordlists/rockyou.txt', '/usr/share/wordlists/fasttrack.txt'] },
+    ],
+  },
+  {
+    id: 'wifite',
+    name: 'Wifite',
+    category: 'wireless',
+    description: 'Automated wireless attack suite',
+    icon: 'Wifi',
+    command: 'wifite',
+    estimatedRuntime: 30,
+    requiresMonitor: true,
+    params: [
+      { id: 'interface', label: 'Interface', type: 'text', placeholder: 'wlan0', required: true },
+      { id: 'attackType', label: 'Attack Type', type: 'select', default: 'all', options: ['all', 'wpa', 'wep', 'wps'] },
+    ],
+  },
+
+  // ─── Sniffing & Spoofing ─────────────────────────────────────────
+  {
+    id: 'wireshark-cli',
+    name: 'Tshark (Wireshark CLI)',
+    category: 'sniffing',
+    description: 'Capture and analyze network traffic from CLI',
+    icon: 'Activity',
+    command: 'tshark',
+    estimatedRuntime: 15,
+    params: [
+      { id: 'interface', label: 'Interface', type: 'text', placeholder: 'eth0', required: true },
+      { id: 'duration', label: 'Duration (sec)', type: 'number', default: 30 },
+      { id: 'filter', label: 'Capture Filter', type: 'text', placeholder: 'port 80', default: '' },
+    ],
+  },
+  {
+    id: 'tcpdump',
+    name: 'Tcpdump',
+    category: 'sniffing',
+    description: 'Command-line packet analyzer',
+    icon: 'Waves',
+    command: 'tcpdump',
+    estimatedRuntime: 10,
+    params: [
+      { id: 'interface', label: 'Interface', type: 'text', placeholder: 'eth0', required: true },
+      { id: 'count', label: 'Packet Count', type: 'number', default: 100 },
+      { id: 'filter', label: 'BPF Filter', type: 'text', placeholder: 'host 192.168.1.1', default: '' },
+    ],
+  },
+  {
+    id: 'ettercap',
+    name: 'Ettercap',
+    category: 'sniffing',
+    description: 'Man-in-the-middle ARP spoofing and sniffing',
+    icon: 'Shuffle',
+    command: 'ettercap',
+    estimatedRuntime: 20,
+    params: [
+      { id: 'target1', label: 'Target 1', type: 'text', placeholder: '192.168.1.1', required: true },
+      { id: 'target2', label: 'Target 2', type: 'text', placeholder: '192.168.1.100' },
+      { id: 'attack', label: 'Attack Type', type: 'select', default: 'arp', options: ['arp (ARP Spoofing)', 'dhcp (DHCP Spoofing)', 'dns (DNS Spoofing)'] },
+    ],
+  },
+  {
+    id: 'responder',
+    name: 'Responder',
+    category: 'sniffing',
+    description: 'LLMNR/NBT-NS/MDNS poisoner for credential capture',
+    icon: 'Radio',
+    command: 'responder',
+    estimatedRuntime: 30,
+    params: [
+      { id: 'interface', label: 'Interface', type: 'text', placeholder: 'eth0', required: true },
+      { id: 'analyze', label: 'Analyze mode only', type: 'boolean', default: false },
+    ],
+  },
+
+  // ─── Post Exploitation ──────────────────────────────────────────
+  {
+    id: 'mimikatz',
+    name: 'Mimikatz',
+    category: 'post',
+    description: 'Extract credentials from Windows memory',
+    icon: 'Eye',
+    command: 'mimikatz',
+    estimatedRuntime: 10,
+    params: [
+      { id: 'action', label: 'Action', type: 'select', default: 'sekurlsa::logonpasswords', options: ['sekurlsa::logonpasswords', 'lsadump::sam', 'lsadump::dcsync', 'privilege::debug'] },
+    ],
+  },
+  {
+    id: 'ssh-connect',
+    name: 'SSH Connect',
+    category: 'post',
+    description: 'Connect to a target via SSH',
+    icon: 'Terminal',
+    command: 'ssh',
+    estimatedRuntime: 3,
+    params: [
+      { id: 'user', label: 'Username', type: 'text', placeholder: 'root', required: true },
+      { id: 'host', label: 'Host', type: 'text', placeholder: '192.168.1.1', required: true },
+      { id: 'port', label: 'Port', type: 'number', default: 22 },
+      { id: 'keyFile', label: 'Key File', type: 'text', placeholder: '/path/to/key', default: '' },
+    ],
+  },
+  {
+    id: 'nfs-enumerate',
+    name: 'NFS Enumerate',
+    category: 'post',
+    description: 'Enumerate and mount NFS exports',
+    icon: 'HardDrive',
+    command: 'showmount',
+    estimatedRuntime: 5,
+    params: [
+      { id: 'target', label: 'Target IP', type: 'text', placeholder: '192.168.1.1', required: true },
+    ],
+  },
+
+  // ─── Forensics ───────────────────────────────────────────────────
+  {
+    id: ' volatility',
+    name: 'Volatility',
+    category: 'forensics',
+    description: 'Memory forensics framework',
+    icon: 'MemoryStick',
+    command: 'volatility',
+    estimatedRuntime: 15,
+    params: [
+      { id: 'dumpFile', label: 'Memory Dump', type: 'text', placeholder: '/path/to/dump.raw', required: true },
+      { id: 'profile', label: 'Profile', type: 'select', default: 'auto', options: ['auto', 'Win10x64', 'Win7SP1x64', 'LinuxUbuntu-4.15.0-20-generic-x64'] },
+      { id: 'plugin', label: 'Plugin', type: 'select', default: 'pslist', options: ['pslist (Process list)', 'pstree (Process tree)', 'netscan (Network connections)', 'filescan (File scan)', 'hashdump (Password hashes)'] },
+    ],
+  },
+  {
+    id: 'binwalk',
+    name: 'Binwalk',
+    category: 'forensics',
+    description: 'Analyze and extract firmware images',
+    icon: 'PackageSearch',
+    command: 'binwalk',
+    estimatedRuntime: 8,
+    params: [
+      { id: 'file', label: 'File', type: 'text', placeholder: '/path/to/firmware.bin', required: true },
+      { id: 'extract', label: 'Extract contents', type: 'boolean', default: true },
+    ],
+  },
+  {
+    id: 'foremost',
+    name: 'Foremost',
+    category: 'forensics',
+    description: 'Recover files from disk images',
+    icon: 'FileSearch',
+    command: 'foremost',
+    estimatedRuntime: 12,
+    params: [
+      { id: 'input', label: 'Input File', type: 'text', placeholder: '/path/to/image.dd', required: true },
+      { id: 'types', label: 'File Types', type: 'text', placeholder: 'jpeg,pdf,zip,doc', default: 'all' },
+    ],
+  },
+  {
+    id: 'strings',
+    name: 'Strings',
+    category: 'forensics',
+    description: 'Extract readable strings from binary files',
+    icon: 'Type',
+    command: 'strings',
+    estimatedRuntime: 3,
+    params: [
+      { id: 'file', label: 'File', type: 'text', placeholder: '/path/to/file', required: true },
+      { id: 'minLen', label: 'Min String Length', type: 'number', default: 4 },
+    ],
+  },
+
+  // ─── Reporting ───────────────────────────────────────────────────
+  {
+    id: 'save-report',
+    name: 'Save Report',
+    category: 'reporting',
+    description: 'Compile all session results into an HTML report',
+    icon: 'FileText',
+    command: 'report-generator',
+    estimatedRuntime: 3,
+    params: [
+      { id: 'format', label: 'Format', type: 'select', default: 'html', options: ['html', 'json', 'txt', 'pdf'] },
+      { id: 'includeOutput', label: 'Include raw output', type: 'boolean', default: true },
+    ],
+  },
+  {
+    id: 'export-captures',
+    name: 'Export Captures',
+    category: 'reporting',
+    description: 'Export and organize all capture files',
+    icon: 'Download',
+    command: 'export',
+    estimatedRuntime: 3,
+    params: [
+      { id: 'format', label: 'Format', type: 'select', default: 'pcap', options: ['pcap', 'csv', 'json'] },
+    ],
+  },
+];
+
+export const toolsByCategory = (cat: ToolCategory) =>
+  kaliTools.filter((t) => t.category === cat);
+
+export const getTool = (id: string) => kaliTools.find((t) => t.id === id);
