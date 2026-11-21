@@ -6,11 +6,14 @@ import { Sidebar } from './components/Sidebar';
 import { ToolList } from './components/ToolList';
 import { ResultsPanel } from './components/ResultsPanel';
 import { buildCommand, createResult } from './commandExecutor';
-import { getTool } from './kaliTools';
 import type { ToolCategory, KaliTool, ExecutionResult } from './types';
 
 function Dashboard() {
-  const { authenticated, savePath, networkMode, setMonitorInterface } = useSession();
+  // Hinweis: Falls dein Sudo-Passwort in useSession() gespeichert wird (z. B. als sudoPassword oder password),
+  // kannst du es hier mit auslesen und unten im fetch-Body mitschicken.
+  const { authenticated, savePath, setMonitorInterface, ...session } = useSession() as any;
+  const sudoPassword = session.sudoPassword || session.password || '';
+
   const [activeCategory, setActiveCategory] = useState<ToolCategory | 'all'>('all');
   const [results, setResults] = useState<ExecutionResult[]>([]);
   const [running, setRunning] = useState(false);
@@ -21,7 +24,7 @@ function Dashboard() {
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleExecute = useCallback(
-    (tool: KaliTool, params: Record<string, string | boolean | number>) => {
+    async (tool: KaliTool, params: Record<string, string | boolean | number>) => {
       if (running) return;
       setRunning(true);
       setRunningToolId(tool.id);
@@ -30,7 +33,7 @@ function Dashboard() {
       const estimatedMs = (tool.estimatedRuntime || 10) * 1000;
       const startTime = Date.now();
 
-      // progress simulation
+      // Ladebalken läuft während der echten Ausführung bis maximal 95 % hoch
       if (progressTimer.current) clearInterval(progressTimer.current);
       progressTimer.current = setInterval(() => {
         const elapsed = Date.now() - startTime;
@@ -38,9 +41,9 @@ function Dashboard() {
         setProgress(pct);
       }, 100);
 
-      // special handling for airmon-ng: update monitor interface
+      // Spezialbehandlung für airmon-ng
       if (tool.id === 'airmon-ng') {
-        const action = String(params.action || 'start').split(' ')[0];
+        const action = String(params.action || 'start').split(' ');
         const iface = String(params.interface || 'wlan0');
         if (action === 'start') {
           setMonitorInterface(`${iface}mon`);
@@ -49,29 +52,58 @@ function Dashboard() {
         }
       }
 
-      setTimeout(() => {
+      const command = buildCommand(tool, params, savePath);
+
+      try {
+        // Echter Aufruf an deine script.js auf Port 3001
+        const response = await fetch('http://localhost:3001/api/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            command,
+            sudoPassword,
+          }),
+        });
+
+        const backendData = await response.json();
+
+        const result = createResult(tool, params, command, {
+          stdout: backendData.stdout || '',
+          stderr: backendData.stderr || '',
+          exitCode: backendData.exitCode ?? (response.ok ? 0 : 1),
+          durationMs: backendData.durationMs || Date.now() - startTime,
+        });
+
+        setResults((prev) => [result, ...prev]);
+      } catch (err: any) {
+        // Falls node script.js nicht läuft oder nicht erreichbar ist
+        const errorResult = createResult(tool, params, command, {
+          stdout: '',
+          stderr: `Backend nicht erreichbar (läuft 'node script.js'?): ${err.message}`,
+          exitCode: 1,
+          durationMs: Date.now() - startTime,
+        });
+
+        setResults((prev) => [errorResult, ...prev]);
+      } finally {
+        // Ladebalken sauber beenden
         if (progressTimer.current) {
           clearInterval(progressTimer.current);
           progressTimer.current = null;
         }
         setProgress(100);
-        const command = buildCommand(tool, params, savePath);
-        const result = createResult(tool, params, command, Date.now() - startTime);
-
-        setResults((prev) => [result, ...prev]);
         setRunning(false);
         setRunningToolId(null);
         setTimeout(() => setProgress(0), 500);
-      }, estimatedMs);
+      }
     },
-    [running, savePath, setMonitorInterface],
+    [running, savePath, setMonitorInterface, sudoPassword],
   );
 
   const handleFollowUp = useCallback(
     (tool: KaliTool, prefill: Record<string, string | boolean | number>) => {
       setPrefillTool(tool);
       setPrefillParams(prefill);
-      // navigate to the tool's category
       setActiveCategory(tool.category);
     },
     [],

@@ -9,7 +9,7 @@ export function SudoLogin() {
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) {
       setError('Password cannot be empty');
@@ -17,12 +17,29 @@ export function SudoLogin() {
     }
     setError('');
     setVerifying(true);
-    setTimeout(() => {
-      setPassword(input);
-      setAuthenticated(true);
+
+    try {
+      const response = await fetch('http://localhost:3001/api/verify-sudo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sudoPassword: input }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        setPassword(input);
+        setAuthenticated(true);
+      } else {
+        setError(data.error || 'Invalid sudo password');
+      }
+    } catch {
+      setError('Backend nicht erreichbar (läuft node script.js?)');
+    } finally {
       setVerifying(false);
-    }, 900);
+    }
   };
+
 
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4 relative overflow-hidden">
